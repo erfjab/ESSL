@@ -2,7 +2,7 @@
 
 clear
 echo -e "\n\n\t\e[92mWelcome to ESSL\n\t\tby @erfjab [gmail, telegram, github]\e[0m\n\n"
-echo "\e[92m-------------------------\e[0m"
+echo -e "\e[92m-------------------------\e[0m"
 
 validate_email() {
     if [[ ! "$1" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
@@ -69,13 +69,13 @@ else
     while true; do
         case $option in
             1)
-                sudo apt install snapd || { echo "Error installing snapd"; exit 1; }
+                sudo apt install snapd -y || { echo "Error installing snapd"; exit 1; }
                 
-                sudo apt remove certbot || { echo "Error removing old certbot"; exit 1; }
+                sudo apt remove certbot -y || { echo "Error removing old certbot"; exit 1; }
 
-                sudo snap install --classic certbot || { echo "Error installing certbot via snap"; exit 1; }
+                sudo snap install --classic certbot -y || { echo "Error installing certbot via snap"; exit 1; }
 
-                sudo certbot certonly --standalone -d "$domain" || { echo "Error getting SSL certificate"; exit 1; }
+                sudo certbot certonly --standalone -d "$domain" -y || { echo "Error getting SSL certificate"; exit 1; }
 
                 sudo mkdir -p "$address"
                 sudo mv /etc/letsencrypt/live/"$domain"/fullchain.pem "$address/fullchain.pem" || { echo "Error copying certificate files"; exit 1; }
