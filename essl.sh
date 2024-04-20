@@ -69,13 +69,13 @@ else
     while true; do
         case $option in
             1)
-                sudo apt install snapd -y || { echo "Error installing snapd"; exit 1; }
+                sudo apt install snapd || { echo "Error installing snapd"; exit 1; }
                 
-                sudo apt remove certbot -y || { echo "Error removing old certbot"; exit 1; }
+                sudo apt remove certbot || { echo "Error removing old certbot"; exit 1; }
 
-                sudo snap install --classic certbot -y || { echo "Error installing certbot via snap"; exit 1; }
+                sudo snap install --classic certbot || { echo "Error installing certbot via snap"; exit 1; }
 
-                sudo certbot certonly --standalone -d "$domain" -y || { echo "Error getting SSL certificate"; exit 1; }
+                sudo certbot certonly --standalone -d "$domain" || { echo "Error getting SSL certificate"; exit 1; }
 
                 sudo mkdir -p "$address"
                 sudo mv /etc/letsencrypt/live/"$domain"/fullchain.pem "$address/fullchain.pem" || { echo "Error copying certificate files"; exit 1; }
