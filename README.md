@@ -1,3 +1,13 @@
+<p align="center">
+  <a href="./README.md">
+	English
+	</a>
+	|
+	<a href="./README_fa.md">
+	فارسی
+	</a>
+</p>
+
 # What is ESSL?
 ESSL (Easy SSL) is a user-friendly script designed to streamline the process of obtaining SSL certificates through various methods. It simplifies the procedure, sparing users from confusing and unnecessary commands. Moreover, ESSL facilitates the segregation of panel domain and users subscription domain within Marzban(a Xray control panel) Currently, ESSL supports the following SSL acquisition options:
 - certbot
