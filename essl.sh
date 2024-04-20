@@ -73,7 +73,7 @@ else
                 
                 sudo apt remove certbot || { echo "Error removing old certbot"; exit 1; }
 
-                sudo snap install --classic certbot || { echo "Error installing certbot via snap"; exit 1; }
+                sudo snap install certbot --classic || { echo "Error installing certbot via snap"; exit 1; }
 
                 sudo certbot certonly --standalone -d "$domain" || { echo "Error getting SSL certificate"; exit 1; }
 
