@@ -23,7 +23,7 @@ input() {
 
 validate_domain() {
     while true; do
-        input $'\e[33mPlease enter your domain: \e[0m' 'domain'
+        input $'\n\e[33mPlease enter your domain: \e[0m' 'domain'
         if [[ "$domain" =~ .*\..* && ${#domain} -ge 3 ]]; then
             return 0
         else
@@ -149,7 +149,7 @@ get_single_ssl_certbot() {
     
     while [ $retry_count -lt $max_retries ]; do
         if sudo certbot certonly --standalone -d "$domain"; then
-            success "\n\n\tSSL certificate for domain '$domain' successfully obtained."
+            success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
             move_ssl_files "$domain" "$fullchain_src" "$privkey_src"
             return 0
         else
@@ -172,7 +172,7 @@ get_wildcard_ssl_certbot() {
     
     while [ $retry_count -lt $max_retries ]; do
         if sudo certbot certonly --manual --preferred-challenges=dns -d "*.$domain" --agree-tos --email "$email"; then
-            success "\n\n\tSSL certificate for domain '*.$domain' successfully obtained."
+            success "\n\n\t⭐ SSL certificate for domain '*.$domain' successfully obtained."
             move_ssl_files "*.$domain" "/etc/letsencrypt/live/$domain/fullchain.pem" "/etc/letsencrypt/live/$domain/privkey.pem"
             return 0
         else
@@ -200,7 +200,7 @@ revoke_ssl_certbot() {
     local dir_path="$1"
     sudo certbot revoke --cert-path "$dir_path" --non-interactive
     if [ $? -eq 0 ]; then
-        success "\n\n\tCertificate successfully revoked.\n\n"
+        success "\n\n\t⭐ Certificate successfully revoked.\n\n"
         directory=$(dirname $(realpath "$dir_path"))
         rm -rf $directory
 
@@ -214,7 +214,7 @@ renew_ssl_cert() {
     local domain="$1"
     certbot renew --cert-name "$domain"
     if [ $? -eq 0 ]; then
-        echo "SSL certificate for domain '$domain' has been successfully renewed."
+        echo "⭐ SSL certificate for domain '$domain' has been successfully renewed."
     else
         echo "Failed to renew the SSL certificate for domain '$domain'. Please check your configuration and try again."
     fi
@@ -258,7 +258,7 @@ move_ssl_files() {
             set_directory "$dest_dir"
             ;;
         3)
-            dest_dir="/root/certs/$domain"
+            dest_dir="/certs/$domain"
             set_directory "$dest_dir"
             ;;
         *)
@@ -266,10 +266,10 @@ move_ssl_files() {
             return 1
             ;;
     esac
-    sudo cp "$fullchain_src" "$dest_dir/$domain/fullchain.pem" || { error "Error copying certificate files"; return 1; }
-    sudo cp "$privkey_src" "$dest_dir/$domain/privkey.pem" || { error "Error copying certificate files"; return 1; }
+    sudo cp "$fullchain_src" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
+    sudo cp "$privkey_src" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
 
-    success "SSL certificate files for domain '$domain' successfully moved to: $dest_dir/$domain"
+    success "\n\nSSL certificate files for domain '$domain' successfully moved.\n\t\t⭐ location: $dest_dir\n\n"
 }
 
 get_multi_domain_ssl_certbot() {
@@ -284,7 +284,7 @@ get_multi_domain_ssl_certbot() {
     done
 
     if sudo certbot certonly --standalone $domain_args --email $email --non-interactive; then
-        success "\n\n\tSSL certificate for domains '$domains' successfully obtained."
+        success "\n\n\t⭐ SSL certificate for domains '$domains' successfully obtained."
         
         for domain in $domains; do
             fullchain_src="/etc/letsencrypt/live/$domain/fullchain.pem"
@@ -308,11 +308,11 @@ print "\t\t v2.0.0 by @ErfJab\n\n"
 
 while true; do
     print "-------------------------------------------------------"
-    print "1) new Single Domain ssl (sub.domain.com)"
-    print "2) new Wildcard ssl (*.domain.com)"
-    print "3) new Multi-Domain ssl (sub.domain1.com, sub2.domain2.com ...)"
-    print "4) renewal ssl (update)" 
-    print "5) revoke ssl (delete)"
+    print "1) New Single Domain ssl (sub.domain.com)"
+    print "2) New Wildcard ssl (*.domain.com)"
+    print "3) New Multi-Domain ssl (sub.domain1.com, sub2.domain2.com ...)"
+    print "4) Renewal ssl (update)" 
+    print "5) Revoke ssl (delete)"
     print "0) Exit"
     input '\nPlease Select your option: ' 'option'
     
