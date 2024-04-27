@@ -1,4 +1,5 @@
-![example essl](essl.mp4)
+https://github.com/erfjab/ESSL/assets/143827987/148d7fca-2f89-4b81-8715-22e4e9aabf9e
+
 
 <p align="center">
   <a href="./README.md">
@@ -85,7 +86,7 @@ If it needs to be extended, it will be extended, otherwise it will say that it i
 <summary>Revoke</summary>
 	
 In Revoke fi you only need :
-- `fullchain.pem path` (e.g: /etc/letsencrypt/live/essl.sweter.top/fullchain.pem)
+- `fullchain.pem path` (e.g: /etc/letsencrypt/live/domain/fullchain.pem)
 
 In revoke, it will first show you the list of domains so you can choose the desired domain and copy/paste the exact address of the domain to be revoked.
 </details>
