@@ -1,106 +1,353 @@
 #!/bin/bash
 
-clear
-echo -e "\n\n\t\e[92mWelcome to ESSL\n\t\tby @erfjab [gmail, telegram, github]\e[0m\n\n"
-echo -e "\e[92m-------------------------\e[0m"
+print() {
+    message="$1"
+    echo -e "\e[94m$message\e[0m"
+}
 
-validate_email() {
-    if [[ ! "$1" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-        echo -e "\e[91mInvalid email format. Please enter a valid email address.\e[0m"
-        return 1
-    fi
+success() {
+    message="$1"
+    echo -e "\e[1;94m$message\e[0m"
+}
+
+error() {
+    message="$1"
+    echo -e "\e[91m$message\e[0m"
+}
+
+input() {
+    message="$1"
+    name="$2"
+    read -p "$(echo -e '\e[33m'"$message"'\e[0m')" "$name"
 }
 
 validate_domain() {
-    if [[ ! "$1" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
-        echo -e "\e[91mInvalid domain format. Please enter a valid domain name.\e[0m"
-        return 1
+    while true; do
+        input $'\e[33mPlease enter your domain: \e[0m' 'domain'
+        if [[ "$domain" =~ .*\..* && ${#domain} -ge 3 ]]; then
+            return 0
+        else
+            error "Invalid domain format. Please enter a valid domain name."
+        fi
+    done
+}
+
+validate_email() {
+    while true; do
+        input $'\e[33mPlease enter your email: \e[0m' 'email'
+        if [[ "$email" =~ .*@.*\..* && ${#email} -gt 5 ]]; then
+            return 0
+        else
+            error "Invalid email format. Please enter a valid email address."
+        fi
+    done
+}
+
+set_directory() {
+    address="$1"
+    if [ -d "$address" ]; then
+        print "deleted $address directory and mkdir again."
+        rm -rf "$address" || { error "Error removing existing directory"; exit 1; }
+    fi
+    mkdir -p "$address" || { error "Error creating directory"; exit 1; }
+}
+
+install_acme() {
+    command -v ~/.acme.sh/acme.sh &>/dev/null || {
+        curl https://get.acme.sh | sh || { error "Error installing acme.sh, try again"; exit 1; }
+    }
+}
+
+install_certbot() {
+    if [ -x "$(command -v apt)" ]; then
+        sudo apt install -y snapd || { error "Error installing snapd, try again"; exit 1; }
+        sudo apt remove -y certbot || { error "Error removing old certbot, try again"; exit 1; }
+        sudo snap install certbot --classic || { error "Error installing certbot via snap, try again"; exit 1; }
+    elif [ -x "$(command -v yum)" ]; then
+        sudo yum -y install epel-release
+        sudo yum -y install certbot python2-certbot-nginx
+    elif [ -x "$(command -v pacman)" ]; then
+        sudo pacman -Sy --noconfirm certbot
+    else
+        error "Unsupported operating system."
+        exit 1
     fi
 }
 
-while true; do
-    read -p 'Please enter your email: ' email
-    if validate_email "$email"; then
-        break
+update_packages() {
+    if [ -x "$(command -v apt)" ]; then
+        apt update && apt install -y socat
+    elif [ -x "$(command -v yum)" ]; then
+        yum -y update && yum -y install socat
+    elif [ -x "$(command -v dnf)" ]; then
+        dnf -y update && dnf -y install socat
+    elif [ -x "$(command -v pacman)" ]; then
+        pacman -Sy --noconfirm socat
+    else
+        error "Unsupported operating system."
     fi
-done
+}
 
-while true; do
-    read -p 'Please enter your domain: ' domain
-    if validate_domain "$domain"; then
-        break
+#get_single_ssl_acme() {
+#    local domain="$1"
+#    local email="$2"
+#    local address="/root/certs/$domain"
+#    set_directory "$domain"
+#    export DOMAIN="$domain"
+#    if ~/.acme.sh/acme.sh \
+#        --issue --force --standalone -d "$DOMAIN" \
+#        --httpport 80 \
+#        --fullchain-file "$address/$DOMAIN.cer" \
+#        --key-file "$address/$DOMAIN.cer.key"; then
+#        success "\n\n\tSSL certificate for domain '$domain' successfully obtained."
+#        success "\t\tYour SSL is located in: $address\n\n\n"
+#    else
+#        error "\n\tFailed to obtain SSL certificate for domain '$domain'.\n"
+#        error "\n\t\tTrying with certbot...\n\n"
+#        get_single_ssl_certbot "$domain" "$email"
+#    fi
+#}
+
+#get_wildcard_ssl_acme() {
+#    local domain="$1"
+#    local email="$2"
+#    local address="/root/certs/$domain"
+#    set_directory "$domain"
+#    export DOMAIN="$domain"
+#    
+#    txt_value=$(cat /root/.acme.sh/"$DOMAIN"_ecc/"$DOMAIN".txt)
+#    print "\nPlease set the following TXT record in your DNS settings:\n"
+#    print "\tName: _acme-challenge.$DOMAIN"
+#    print "\tText Value: $txt_value\n"
+#    
+#    ~/.acme.sh/acme.sh --issue -d $DOMAIN --dns \
+#     --yes-I-know-dns-manual-mode-enough-go-ahead-please
+#    
+#    if [ $? -eq 0 ]; then
+#        input '\nPlease set the name and text value in your DNS record...\n\n\tAfter setting, enter y/Y to confirm: ' 'set_txt'
+#        
+#        if [ "$set_txt" == "y" ] || [ "$set_txt" == "Y" ]; then
+#            ~/.acme.sh/acme.sh --renew -d $DOMAIN \
+#            --yes-I-know-dns-manual-mode-enough-go-ahead-please
+#            success "\n\n\tSSL certificate for domain '$domain' successfully obtained."
+#        else
+#            error "\n\tYou chose not to proceed with setting up the DNS. SSL certificate issuance for domain '$domain' aborted.\n"
+#        fi
+#    else
+#        error "\n\tFailed to obtain SSL certificate for domain '$domain'. Please check your DNS configuration and try again.\n"
+#    fi
+#}
+
+
+get_single_ssl_certbot() {
+    local domain="$1"
+    local email="$2"
+    local fullchain_src="/etc/letsencrypt/live/$domain/fullchain.pem"
+    local privkey_src="/etc/letsencrypt/live/$domain/privkey.pem"
+    local retry_count=0
+    local max_retries=2
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if sudo certbot certonly --standalone -d "$domain"; then
+            success "\n\n\tSSL certificate for domain '$domain' successfully obtained."
+            move_ssl_files "$domain" "$fullchain_src" "$privkey_src"
+            return 0
+        else
+            ((retry_count++))
+            error "\n\tFailed to obtain SSL certificate for domain '$domain'. Retrying ($retry_count of $max_retries)...\n\n"
+            sleep 5
+        fi
+    done
+    
+    error "\n\tFailed to obtain SSL certificate for domain '$domain' after $max_retries attempts.\n\n"
+    return 1
+}
+
+
+get_wildcard_ssl_certbot() {
+    local domain="$1"
+    local email="$2"    
+    local retry_count=0
+    local max_retries=2
+    
+    while [ $retry_count -lt $max_retries ]; do
+        if sudo certbot certonly --manual --preferred-challenges=dns -d "*.$domain" --agree-tos --email "$email"; then
+            success "\n\n\tSSL certificate for domain '*.$domain' successfully obtained."
+            move_ssl_files "*.$domain" "/etc/letsencrypt/live/$domain/fullchain.pem" "/etc/letsencrypt/live/$domain/privkey.pem"
+            return 0
+        else
+            ((retry_count++))
+            error "\n\tFailed to obtain SSL certificate for domain '*.$domain'. Retrying ($retry_count of $max_retries)...\n\n"
+        fi
+    done
+    
+    error "\n\tFailed to obtain SSL certificate for domain '*.$domain' after $max_retries attempts. Please check your DNS configuration and try again.\n"
+    return 1
+}
+
+domain_list() {
+    print "\nFirst, please check your domain's list:\n"
+    if ! certbot certificates | grep -q "No certificates found"; then
+        certbot certificates
+        input "\nEnter fullchain.pem cert address: " "dir_path"
+        revoke_ssl_certbot "$dir_path"
+    else
+        error "\nYou don't have any domains.\n"
     fi
-done
+}
 
-read -p 'Do you want SSL for marzban? (y/n): ' marzban
+revoke_ssl_certbot() {
+    local dir_path="$1"
+    sudo certbot revoke --cert-path "$dir_path" --non-interactive
+    if [ $? -eq 0 ]; then
+        success "\n\n\tCertificate successfully revoked.\n\n"
+        directory=$(dirname $(realpath "$dir_path"))
+        rm -rf $directory
 
-marzban=$(echo "$marzban" | tr '[:upper:]' '[:lower:]')
+    else
+        error "\n\tFailed to revoke certificate.\n\n"
+    fi
+}
 
-if [[ "$marzban" == 'y' || "$marzban" == 'yes' ]]; then
-    address="/var/lib/marzban/certs/$domain"
-    mkdir -p "$address"
-else
-    read -p 'Please enter your DR address: ' address
-fi
 
-read -p 'Do you want multi-domain SSL? (y/n): ' has_multi_domain
-has_multi_domain=$(echo "$has_multi_domain" | tr '[:upper:]' '[:lower:]')
+renew_ssl_cert() {
+    local domain="$1"
+    certbot renew --cert-name "$domain"
+    if [ $? -eq 0 ]; then
+        echo "SSL certificate for domain '$domain' has been successfully renewed."
+    else
+        echo "Failed to renew the SSL certificate for domain '$domain'. Please check your configuration and try again."
+    fi
+}
 
-if [[ "$has_multi_domain" == 'y' || "$has_multi_domain" == 'yes' ]]; then
+get_destination_directory() {
+    local domain="$1"
     while true; do
-        read -p 'Please enter your second domain: ' domain2 && \
-        if validate_domain "$domain2"; then
-            apt-get install -y curl cron socat
-            curl https://get.acme.sh | sh -s email="$email" || { echo "Error installing acme.sh"; exit 1; }
-            ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt --issue --force --standalone \
-            -d $domain -d $domain2 || { echo "Error issuing SSL certificate"; exit 1; }
-            ~/.acme.sh/acme.sh --installcert -d $domain \
-            --key-file $address/key.pem \
-            --fullchain-file $address/fullchain.pem || { echo "Error installing SSL certificate"; exit 1; }
+        input "\nEnter the destination directory path: " "dest_dir"
+        if [ -z "$dest_dir" ]; then
+            error "Destination directory cannot be empty."
+        elif [[ ! "$dest_dir" == /* ]]; then
+            error "Destination directory must start with '/'."
+        elif [[ "$dest_dir" == */ || "$dest_dir" == *//* ]]; then
+            error "Invalid destination directory format. Please avoid trailing '/' and consecutive '/'."
+        else
+            address="$dest_dir/$domain"
+            set_directory $address
             break
         fi
     done
-else
-    echo -e "\nGet SSL with which tool?\n"
-    echo "1) certbot"
-    echo -e "2) acme.sh\n" && \
-    read -p 'Please select an option: ' option && \
+}
 
-    while true; do
-        case $option in
-            1)
-                sudo apt install snapd || { echo "Error installing snapd"; exit 1; }
-                
-                sudo apt remove certbot || { echo "Error removing old certbot"; exit 1; }
 
-                sudo snap install certbot --classic || { echo "Error installing certbot via snap"; exit 1; }
 
-                sudo certbot certonly --standalone -d "$domain" || { echo "Error getting SSL certificate"; exit 1; }
+move_ssl_files() {
+    local domain="$1"
+    local fullchain_src="$2"
+    local privkey_src="$3"
+    print "\n\n\nWhere would you like to move the SSL certificate files for domain '$domain'?\n"
+    print "1. Custom directory"
+    print "2. Default directory 'marzban'"
+    print "3. Default directory 'all 3x-ui/s-ui/hiddify'"
+    input "\nEnter your choice (1, 2, 3): " "choice"
+    case $choice in
+        1)
+            get_destination_directory "$domain"
+            ;;
+        2)
+            dest_dir="/var/lib/marzban/certs/$domain"
+            set_directory "$dest_dir"
+            ;;
+        3)
+            dest_dir="/root/certs/$domain"
+            set_directory "$dest_dir"
+            ;;
+        *)
+            error "Invalid choice. Please enter 1, 2, or 3."
+            return 1
+            ;;
+    esac
+    sudo cp "$fullchain_src" "$dest_dir/$domain/fullchain.pem" || { error "Error copying certificate files"; return 1; }
+    sudo cp "$privkey_src" "$dest_dir/$domain/privkey.pem" || { error "Error copying certificate files"; return 1; }
 
-                sudo mkdir -p "$address"
-                sudo mv /etc/letsencrypt/live/"$domain"/fullchain.pem "$address/fullchain.pem" || { echo "Error copying certificate files"; exit 1; }
-                sudo mv /etc/letsencrypt/live/"$domain"/privkey.pem "$address/privkey.pem" || { echo "Error copying certificate files"; exit 1; }
-                break
-                ;;
-            2)
+    success "SSL certificate files for domain '$domain' successfully moved to: $dest_dir/$domain"
+}
 
-                curl https://get.acme.sh | sh -s email="$email" || { echo "Error installing acme.sh"; exit 1; }
+get_multi_domain_ssl_certbot() {
+    local domains="$1"
+    local email="$2"
+    local domain_args=""
+    local fullchain_src=""
+    local privkey_src=""
 
-                export DOMAIN="$domain"
-                mkdir -p "$address"
-                ~/.acme.sh/acme.sh \
-                    --issue --force --standalone -d "$DOMAIN" \
-                    --fullchain-file "$address/$DOMAIN.cer" \
-                    --key-file "$address/$DOMAIN.cer.key" || { echo "Error getting SSL certificate"; exit 1; }
-                break
-                ;;
-            *)
-                echo -e "\e[91mInvalid option selected.\e[0m"
-                read -p 'Please select again an option: ' option
-                ;;
-        esac
+    for domain in $domains; do
+        domain_args+=" -d $domain"
     done
-fi
+
+    if sudo certbot certonly --standalone $domain_args --email $email --non-interactive; then
+        success "\n\n\tSSL certificate for domains '$domains' successfully obtained."
+        
+        for domain in $domains; do
+            fullchain_src="/etc/letsencrypt/live/$domain/fullchain.pem"
+            privkey_src="/etc/letsencrypt/live/$domain/privkey.pem"
+            move_ssl_files "$domain" "$fullchain_src" "$privkey_src"
+            break
+        done
+    else
+        error "\n\tFailed to obtain SSL certificate for domains '$domains'.\n"
+    fi
+}
 
 
-echo -e "\n\n\e[92mYour ssl in here : $address\n\t\tDon't forget ⭐, good luck.\e[0m\n\n"
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+clear ; update_packages ; install_certbot ; install_acme ; clear
+
+print "\n\n\t Welcome to ESSL"
+print "\t\t v2.0.0 by @ErfJab\n\n"
+
+while true; do
+    print "-------------------------------------------------------"
+    print "1) new Single Domain ssl (sub.domain.com)"
+    print "2) new Wildcard ssl (*.domain.com)"
+    print "3) new Multi-Domain ssl (sub.domain1.com, sub2.domain2.com ...)"
+    print "4) renewal ssl (update)" 
+    print "5) revoke ssl (delete)"
+    print "0) Exit"
+    input '\nPlease Select your option: ' 'option'
+    
+    clear
+
+    if [ "$option" == "1" ]; then
+        validate_domain
+        validate_email
+        clear
+        get_single_ssl_certbot "$domain" "$email"
+
+    elif [ "$option" == "2" ]; then
+        validate_domain
+        validate_email
+        clear
+        get_wildcard_ssl_certbot "$domain" "$email"
+
+    elif [ "$option" == "3" ]; then
+        validate_domain
+        validate_email
+        clear
+        get_multi_domain_ssl_certbot "$domain" "$email"
+
+    elif [ "$option" == "4" ]; then
+        validate_domain
+        renew_ssl_cert "$domain"
+
+    elif [ "$option" == "5" ]; then
+        domain_list
+
+    elif [ "$option" == "0" ]; then
+        clear
+        exit 1
+
+    else
+        error "Invalid input. Please select a valid option.\n\n"
+    fi
+done
