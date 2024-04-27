@@ -1,3 +1,5 @@
+![example essl](essl.mp4)
+
 <p align="center">
   <a href="./README.md">
 	English
@@ -9,29 +11,85 @@
 </p>
 
 # What is ESSL?
-ESSL (Easy SSL) is a user-friendly script designed to streamline the process of obtaining SSL certificates through various methods. It simplifies the procedure, sparing users from confusing and unnecessary commands. Moreover, ESSL facilitates the segregation of panel domain and users subscription domain within Marzban(a Xray control panel) Currently, ESSL supports the following SSL acquisition options:
-- certbot
-- acme
+ESSL (Easy SSL) is a user-friendly script designed to streamline the process of obtaining SSL certificates through various methods. It simplifies the procedure, sparing users from confusing and unnecessary commands. just copy and paste one line so that everything is done automatically.
+
+### Future's:
+- Single domain ssl (sub.domain.com)
+- Wildcard domain ssl (*.domain.com)
+- Multi-domain ssl (sub1.doamin1.com sub2.domain2.com)
+- Renewal ssl (update)
+- Revoke ssl (delete)
+- Automatic/Custom patch (support all panel's directory)
 
 > [!IMPORTANT]
-> More options will be added soon. 🔥
+> In the current version, only `certbot` is used.
 
-# How to Use?
-Follow these steps to utilize ESSL effectively:
 
-1. Execute the following command in your terminal:
+## How to Use?
+
+just copy/paste and enjoy : 
+
 ```bash
 sudo bash -c "$(curl -sL https://github.com/erfjab/ESSL/raw/main/essl.sh)"
 ```
+<details>
 
-2. Enter the required information as prompted:
+<summary>Single Domain</summary>
+	
+In single domain after set DNS you only need :
+- `domain` (e.g: sub.doamin.com)
+- `email`
 
-- **Email**: Provide your email address, which will be utilized for SSL usage.
-- **Domain**: Specify the domain for which you wish to obtain SSL.
-- **multi-domain**: If you want multi-domain SSL, enter 'y' and provide your additional domain. Otherwise, enter 'n'. ([source](https://github.com/Gozargah/Marzban/discussions/684))
-- **Address**: If you are using Marzban, the SSL directory is default. Input 'y'. Otherwise, if you prefer a custom directory, input 'n' and specify your desired directory.
-- **Options**: Select the appropriate option by entering its corresponding number.
+After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+</details>
 
-Once completed, the SSL script will acquire the SSL certificate for your domain and place it in the specified folder. Should you encounter any issues or have inquiries, feel free to communicate them in the issue section. Additionally, you can subscribe to my Telegram channel [@ErfJabs](https://t.me/ErfJabs) to receive notifications regarding script updates and news.
 
-**Don't Forget ⭐, good luck.**
+<details>
+
+<summary>Wildcard Domain</summary>
+	
+In wildcard domain after set DNS you only need :
+- `domain` (e.g: domain.com)
+- `email`
+
+Now it gives you a name and text value, which asks you to set them in text dns format, after a few moments, click set enter.
+
+After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+</details>
+
+
+<details>
+
+<summary>Multi-Domain</summary>
+	
+In Multi domain after set DNS you only need :
+- `domain's` (in a line with a space e.g: sub1.domain1.com sub2.domain2.com...)
+- `email`
+
+After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+</details>
+
+<details>
+
+<summary>Renewal</summary>
+	
+In renewal you only need :
+- `domain` (e.g: *.domain.com (wildcard) sub.domain.com (single))
+
+If it needs to be extended, it will be extended, otherwise it will say that it is not needed yet.
+</details>
+
+
+<details>
+
+<summary>Revoke</summary>
+	
+In Revoke fi you only need :
+- `fullchain.pem path` (e.g: /etc/letsencrypt/live/essl.sweter.top/fullchain.pem)
+
+In revoke, it will first show you the list of domains so you can choose the desired domain and copy/paste the exact address of the domain to be revoked.
+</details>
+
+## Support project 
+
+**We don't need financial support, only Star (⭐) is enough, thank you.**
