@@ -92,7 +92,6 @@ set_directory() {
     address="$1"
     if [ -d "$address" ]; then
         rm -rf "$address" || { error "Error removing existing directory"; exit 1; }
-        success "Deleted $address directory and created again."
     fi
     mkdir -p "$address" || { error "Error creating directory"; exit 1; }
 }
@@ -103,10 +102,10 @@ move_ssl_files_combined() {
     local dest_dir=""
     
     while true; do
-        print "\n\n\nWhere would you like to move the SSL certificate files for domain '$domain'?\n"
+        print "\n\n\nMoved to?\n"
         print "1. Custom directory"
-        print "2. Default directory 'Marzban'"
-        print "3. Default directory '3x-ui/x-ui/s-ui/hiddify'"
+        print "2. Marzban panel directory "
+        print "3. 3x-ui/x-ui/s-ui/hiddify panel directory"
         input "\nEnter your choice (1, 2, 3): " "choice"
         case $choice in
             1)
@@ -163,7 +162,7 @@ move_ssl_files_combined() {
             sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
             sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
         fi
-        success "\nSSL certificate files for domain '$domain' successfully moved.\n\t⭐ SSL location: $dest_dir\n\n\tfullchain: $dest_dir/fullchain.cer\n\tkey file : $dest_dir/privkey.key\n\n"
+        success "SSL certificate files for domain '$domain' successfully moved.\n\n\t⭐ SSL location: $dest_dir\n\n\tfullchain: $dest_dir/fullchain.cer\n\tkey file : $dest_dir/privkey.key\n\n"
         break
     done
 }
