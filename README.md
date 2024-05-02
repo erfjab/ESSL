@@ -1,5 +1,4 @@
-https://github.com/erfjab/ESSL/assets/143827987/148d7fca-2f89-4b81-8715-22e4e9aabf9e
-
+https://github.com/erfjab/ESSL/assets/143827987/2e9873a6-1ea8-4777-a4f9-a18cd58a0a29
 
 <p align="center">
   <a href="./README.md">
@@ -22,9 +21,13 @@ ESSL (Easy SSL) is a user-friendly script designed to streamline the process of 
 - Revoke ssl (delete)
 - Automatic/Custom patch (support all panel's directory)
 
-> [!IMPORTANT]
-> In the current version, only `certbot` is used.
+### Support:
+- Acme
+- Certbot
+- Cloudflare api
 
+> [!IMPORTANT]
+> The script automatically tests both acme and certbot to generate the certificate.
 
 ## How to Use?
 
@@ -36,26 +39,53 @@ sudo bash -c "$(curl -sL https://github.com/erfjab/ESSL/raw/main/essl.sh)"
 <details>
 
 <summary>Single Domain</summary>
-	
-In single domain after set DNS you only need :
-- `domain` (e.g: sub.doamin.com)
-- `email`
 
-After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+1. acme & certbot
+	In single domain after set DNS you only need :
+	- `domain` (e.g: sub.doamin.com)
+	- `email`
+	
+	After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+2. cloudflare api
+	> Cloudflare api only generates wildcard certificates.
+
+	With cloudflare api you don't need to set dns. well:
+	- `domain` (e.g: domain.com)
+	- `cloudflare account email`
+	- `cloudflare global api key`
+	
+ 	how to find cloudflare global api key : [Link](https://coda.io/@vishesh-jain/api-documentation/cloudflare-global-api-key-15)
+	
+ 	After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+
 </details>
 
 
 <details>
 
 <summary>Wildcard Domain</summary>
+
+1. acme & certbot
+
+	In wildcard domain after set DNS you only need :
+	- `domain` (e.g: domain.com)
+	- `email`
+
+	Now it gives you a name and text value, which asks you to set them in text dns format, after a few moments, click set enter.
+
+	After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
+2. cloudflare api
+
+	> Cloudflare api only generates wildcard certificates.
+ 
+	With cloudflare api you don't need to set dns. well:
+	- `domain` (e.g: domain.com)
+	- `cloudflare account email`
+	- `cloudflare global api key`
 	
-In wildcard domain after set DNS you only need :
-- `domain` (e.g: domain.com)
-- `email`
+ 	how to find cloudflare global api key : [Link](https://coda.io/@vishesh-jain/api-documentation/cloudflare-global-api-key-15)
+	After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
 
-Now it gives you a name and text value, which asks you to set them in text dns format, after a few moments, click set enter.
-
-After receiving ssl, it will show you three path, the first one is for the desired path, the second one is for the border panel path and the third one is for the path of other panels. You received a certificate so easily and easily.
 </details>
 
 
@@ -86,9 +116,9 @@ If it needs to be extended, it will be extended, otherwise it will say that it i
 <summary>Revoke</summary>
 	
 In Revoke fi you only need :
-- `fullchain.pem path` (e.g: /etc/letsencrypt/live/domain/fullchain.pem)
+- `domain` (e.g: *.domain.com (wildcard) sub.domain.com (single))
 
-In revoke, it will first show you the list of domains so you can choose the desired domain and copy/paste the exact address of the domain to be revoked.
+If your domain is in the domain list, it will revoked.
 </details>
 
 ## Support project 
