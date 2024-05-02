@@ -145,7 +145,7 @@ move_ssl_files_combined() {
         fi
 
         if [ "$type" == "acme" ]; then
-            if [ ! -f "~/.acme.sh/${domain}_acc/fullchain.cer" ] || [ ! -f "~/.acme.sh/${domain}_acc/${domain}.key" ]; then
+            if [ ! -f "~/.acme.sh/${domain}_ecc/fullchain.cer" ] || [ ! -f "~/.acme.sh/${domain}_acc/${domain}.key" ]; then
                 error "Certificate files not found in the '~/.acme.sh/${domain}_acc/' directory."
                 break
             fi
@@ -157,8 +157,8 @@ move_ssl_files_combined() {
         fi
 
         if [ "$type" == "acme" ]; then
-            sudo cp "~/.acme.sh/${domain}_acc/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
-            sudo cp "~/.acme.sh/${domain}_acc/${domain}.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
+            sudo cp "~/.acme.sh/${domain}_ecc/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
+            sudo cp "~/.acme.sh/${domain}_ecc/${domain}.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
         elif [ "$type" == "certbot" ]; then
             sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
             sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
@@ -240,12 +240,29 @@ revoke_ssl() {
 
 renew_ssl() {
     local domain="$1"
-    if sudo certbot renew --cert-name "$domain"; then
-        success "SSL certificate for domain '$domain' renewed successfully."
-    elif sudo ~/.acme.sh/acme.sh --renew -d "$domain"; then
-        success "SSL certificate for domain '$domain' renewed successfully."
+    local ssl_type=""
+    
+    if sudo certbot certificates --cert-name "$domain" | grep -q "Certificate Name: $domain"; then
+        ssl_type="certbot"
+    elif [ -f "~/.acme.sh/${domain}/${domain}.cer" ]; then
+        ssl_type="acme"
     else
         error "No SSL certificate found for domain '$domain'."
+        return 1
+    fi
+    
+    if [ "$ssl_type" == "certbot" ]; then
+        if sudo certbot renew --cert-name "$domain"; then
+            success "SSL certificate for domain '$domain' renewed successfully."
+        else
+            error "Failed to renew SSL certificate for domain '$domain' using Certbot. check logs..."
+        fi
+    elif [ "$ssl_type" == "acme" ]; then
+        if sudo ~/.acme.sh/acme.sh --renew -d "$domain"; then
+            success "SSL certificate for domain '$domain' renewed successfully."
+        else
+            error "Failed to renew SSL certificate for domain '$domain' using ACME.sh. check logs..."
+        fi
     fi
 }
 
