@@ -79,7 +79,7 @@ validate_email() {
 
 validate_apikey() {
     while true; do
-        input "Please enter your Global API key:" "api_key"
+        input "Please enter your Global API key: " "api_key"
         if [[ -n "$api_key" ]]; then
             break
         else
@@ -145,20 +145,20 @@ move_ssl_files_combined() {
         fi
 
         if [ "$type" == "acme" ]; then
-            if [ ! -f "~/.acme.sh/${domain}_ecc/fullchain.cer" ] || [ ! -f "~/.acme.sh/${domain}_acc/${domain}.key" ]; then
-                error "Certificate files not found in the '~/.acme.sh/${domain}_acc/' directory."
+            if [ ! -f ~/.acme.sh/"${domain}_ecc"/fullchain.cer ] || [ ! -f ~/.acme.sh/"${domain}_ecc"/"${domain}".key ]; then
+                error "Certificate files not found in the '~/.acme.sh/${domain}_ecc/' directory."
                 break
             fi
         elif [ "$type" == "certbot" ]; then
-            if [ ! -f "/etc/letsencrypt/live/$domain/fullchain.pem" ] || [ ! -f "/etc/letsencrypt/live/$domain/privkey.pem" ]; then
+            if [ ! -f /etc/letsencrypt/live/"$domain"/fullchain.pem ] || [ ! -f /etc/letsencrypt/live/"$domain"/privkey.pem ]; then
                 error "Certificate files not found in the '/etc/letsencrypt/live/$domain/' directory."
                 break
             fi
         fi
 
         if [ "$type" == "acme" ]; then
-            sudo cp "~/.acme.sh/${domain}_ecc/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
-            sudo cp "~/.acme.sh/${domain}_ecc/${domain}.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
+            sudo cp "$HOME/.acme.sh/${domain}_ecc/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
+            sudo cp "$HOME/.acme.sh/${domain}_ecc/${domain}.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
         elif [ "$type" == "certbot" ]; then
             sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
             sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
@@ -266,23 +266,11 @@ renew_ssl() {
     fi
 }
 
-get_cloudflare_single_ssl() {
+get_cloudflare_ssl() {
     local domain="$1"    
     export CF_Key="$2"
     export CF_Email="$3"
-    if ~/.acme.sh/acme.sh --issue --dns dns_cf -d "${domain}" --log; then
-        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained from Cloudflare."
-        move_ssl_files_combined "$domain" "acme"
-    else
-        error "\n\tFailed to obtain SSL certificate for domain '$domain' from Cloudflare."
-    fi
-}
-
-get_cloudflare_wildcard_ssl() {
-    local domain="$1"    
-    export CF_Key="$2"
-    export CF_Email="$3"
-    if ~/.acme.sh/acme.sh --issue --dns dns_cf -d "*.${domain}" --log; then
+    if sudo ~/.acme.sh/acme.sh --issue --dns dns_cf -d ${domain} -d *.${domain} --log; then
         success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained from Cloudflare."
         move_ssl_files_combined "$domain" "acme"
     else
@@ -323,7 +311,7 @@ while true; do
             validate_email "cloudflare"
             validate_apikey
             clear
-            get_cloudflare_single_ssl "$domain" "$email" "$api_key"
+            get_cloudflare_ssl "$domain" "$email" "$api_key"
         else
             error "Invalid option."
         fi        
@@ -343,7 +331,7 @@ while true; do
             validate_email "cloudflare"
             validate_apikey
             clear
-            get_cloudflare_wildcard_ssl "$domain" "$email" "$api_key"
+            get_cloudflare_ssl "$domain" "$email" "$api_key"
         else
             error "Invalid option. Please enter 1 or 2."
         fi   
