@@ -163,10 +163,7 @@ move_ssl_files_combined() {
             sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
             sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
         fi
-        success "\nSSL certificate files for domain '$domain' successfully moved.\n\t⭐ SSL location: $dest_dir\n\n"
-        print "fullchain: $dest_dir/fullchain.cer"
-        print "key file : $dest_dir/privkey.key"
-        break
+        success "\nSSL certificate files for domain '$domain' successfully moved.\n\t⭐ SSL location: $dest_dir\n\n\tfullchain: $dest_dir/fullchain.cer\n\tkey file : $dest_dir/privkey.key"
     done
 }
 
