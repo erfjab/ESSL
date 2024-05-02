@@ -5,7 +5,7 @@ print() {
 }
 
 error() {
-    echo -e "\e[91m[error] "$1"\e[0m"
+    echo -e "\e[1;91m[error] "$1"\e[0m"
 }
 
 success() {
@@ -101,6 +101,7 @@ move_ssl_files_combined() {
     local domain="$1"
     local type="$2"
     local dest_dir=""
+    
     while true; do
         print "\n\n\nWhere would you like to move the SSL certificate files for domain '$domain'?\n"
         print "1. Custom directory"
@@ -123,42 +124,59 @@ move_ssl_files_combined() {
                         break
                     fi
                 done
-                break
                 ;;
             2)
                 dest_dir="/var/lib/marzban/certs/$domain"
                 set_directory "$dest_dir"
-                break
                 ;;
             3)
                 dest_dir="/certs/$domain"
                 set_directory "$dest_dir"
-                break
                 ;;
             *)
                 error "Invalid choice. Please enter 1, 2, or 3."
+                continue
                 ;;
         esac
-    done
-    if [ "$type" == "acme" ]; then
-        sudo cp "$HOME/.acme.sh/$domain/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
-        sudo cp "$HOME/.acme.sh/$domain/$domain.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
-    elif [ "$type" == "certbot" ]; then
-        sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
-        sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
-    fi
 
-    success "\nSSL certificate files for domain '$domain' successfully moved.\n\t⭐ SSL location: $dest_dir\n\n"
+        if [ ! -d "$dest_dir" ] || [ ! -w "$dest_dir" ]; then
+            error "Directory '$dest_dir' either does not exist or is not writable."
+            continue
+        fi
+
+        if [ "$type" == "acme" ]; then
+            if [ ! -f "~/.acme.sh/${domain}_acc/fullchain.cer" ] || [ ! -f "~/.acme.sh/${domain}_acc/${domain}.key" ]; then
+                error "Certificate files not found in the '~/.acme.sh/${domain}_acc/' directory."
+                break
+            fi
+        elif [ "$type" == "certbot" ]; then
+            if [ ! -f "/etc/letsencrypt/live/$domain/fullchain.pem" ] || [ ! -f "/etc/letsencrypt/live/$domain/privkey.pem" ]; then
+                error "Certificate files not found in the '/etc/letsencrypt/live/$domain/' directory."
+                break
+            fi
+        fi
+
+        if [ "$type" == "acme" ]; then
+            sudo cp "~/.acme.sh/${domain}_acc/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
+            sudo cp "~/.acme.sh/${domain}_acc/${domain}.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
+        elif [ "$type" == "certbot" ]; then
+            sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
+            sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
+        fi
+
+        success "\nSSL certificate files for domain '$domain' successfully moved.\n\t⭐ SSL location: $dest_dir\n\n"
+        break
+    done
 }
 
 get_single_ssl() {
     local domain="$1"
     local email="$2"
     if sudo ~/.acme.sh/acme.sh --issue --force --standalone -d "$domain"; then
-        echo -e "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
+        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
         move_ssl_files_combined "$domain" "acme"
     elif sudo certbot certonly --standalone -d "$domain"; then
-        echo -e "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
+        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
         move_ssl_files_combined "$domain" "certbot"
     else
         error "Failed to obtain SSL certificate for domain '$domain'. Please check your DNS configuration and try again.\n"
@@ -231,11 +249,23 @@ renew_ssl() {
     fi
 }
 
-get_cloudflare_ssl() {
+get_cloudflare_single_ssl() {
     local domain="$1"    
     export CF_Key="$2"
     export CF_Email="$3"
-    if ~/.acme.sh/acme.sh --issue --dns dns_cf -d "${domain}" -d "*.${domain}" --log; then
+    if ~/.acme.sh/acme.sh --issue --dns dns_cf -d "${domain}" --log; then
+        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained from Cloudflare."
+        move_ssl_files_combined "$domain" "acme"
+    else
+        error "\n\tFailed to obtain SSL certificate for domain '$domain' from Cloudflare."
+    fi
+}
+
+get_cloudflare_wildcard_ssl() {
+    local domain="$1"    
+    export CF_Key="$2"
+    export CF_Email="$3"
+    if ~/.acme.sh/acme.sh --issue --dns dns_cf -d "*.${domain}" --log; then
         success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained from Cloudflare."
         move_ssl_files_combined "$domain" "acme"
     else
@@ -262,9 +292,9 @@ while true; do
     clear
 
     if [ "$option" == "1" ]; then
-        print "1) with acme & certbot"
+        print "1) with acme & certbot (recommend)"
         print "2) with cloudflare api"
-        input "\nplease enter your option: " "select_option"
+        input "\nplease enter your option number: " "select_option"
         clear
         if [[ "$select_option" =~ 1 ]]; then
             validate_domain
@@ -276,15 +306,15 @@ while true; do
             validate_email "cloudflare"
             validate_apikey
             clear
-            get_cloudflare_ssl "$domain" "$email" "$api_key"
+            get_cloudflare_single_ssl "$domain" "$email" "$api_key"
         else
             error "Invalid option."
         fi        
 
     elif [ "$option" == "2" ]; then
         print "1) with acme & certbot"
-        print "2) with cloudflare api"
-        input "\nplease enter your option: " "select_option"
+        print "2) with cloudflare api (recommend)"
+        input "\nplease enter your option number: " "select_option"
         clear
         if [[ "$select_option" =~ 1 ]]; then
             validate_domain
@@ -296,7 +326,7 @@ while true; do
             validate_email "cloudflare"
             validate_apikey
             clear
-            get_cloudflare_ssl "$domain" "$email" "$api_key"
+            get_cloudflare_wildcard_ssl "$domain" "$email" "$api_key"
         else
             error "Invalid option. Please enter 1 or 2."
         fi   
