@@ -125,3 +125,26 @@ sudo bash -c "$(curl -sL https://github.com/erfjab/ESSL/raw/main/essl.sh)"
 ## حمایت پروژه 
 
 **ما نیاز به حمایت مالی نداریم, فقط استار دادن (⭐) کافیه‌، ممنونیم.**
+
+<p align="center">
+	<picture>
+	  <source
+	    media="(prefers-color-scheme: dark)"
+	    srcset="
+	      https://api.star-history.com/svg?repos=erfjab/ESSL&type=Date&theme=dark
+	    "
+	  />
+	  <source
+	    media="(prefers-color-scheme: light)"
+	    srcset="
+	      https://api.star-history.com/svg?repos=erfjab/ESSL&type=Date
+	    "
+	  />
+	  <img
+	    alt="Star History Chart"
+	    src="https://api.star-history.com/svg?repos=erfjab/ESSL&type=Date"
+	  />
+	</picture>
+</p>
+
+
