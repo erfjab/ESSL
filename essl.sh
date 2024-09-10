@@ -148,6 +148,7 @@ Commands:
   --install     Install the ESSL script.
   --upgrade     Upgrade the ESSL script to the latest version.
   --help        Show this help message.
+  --version     Show script version
 
 Examples:
   essl user@example.com example.com /etc/ssl/certs
@@ -178,7 +179,10 @@ main() {
             show_help
             exit 0
             ;;
-    esac
+        --version|-v)
+            print "v3.0.1"
+            exit 0
+            ;;esac
 
     # Check if user provided enough arguments for SSL installation
     if [ $# -lt 3 ]; then

@@ -14,7 +14,7 @@ ESSL is a script to quickly obtain SSL certificates for your domains. It support
 
 1. **Download and Install the Script:**
    ```bash
-   sudo bash -c "$(curl -sL https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh) --install"
+   sudo bash -c "$(curl -sL https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh)" --install
    ```
 
 2. **Run the Script:**
