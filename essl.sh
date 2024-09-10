@@ -95,8 +95,8 @@ get_install_certificate_certbot() {
     local cert_dir="$destination"
     mkdir -p "$cert_dir" || error "Failed to create certificate directory"
 
-    cp /etc/letsencrypt/live/$main_domain/privkey.pem "$cert_dir/privkey.pem"
-    cp /etc/letsencrypt/live/$main_domain/fullchain.pem "$cert_dir/fullchain.pem"
+    cat /etc/letsencrypt/live/$main_domain/privkey.pem > "$cert_dir/privkey.pem"
+    cat /etc/letsencrypt/live/$main_domain/fullchain.pem > "$cert_dir/fullchain.pem"
 
     success "SSL certificate obtained and installed using certbot for domains: ${domains[*]}"
     return 0
@@ -180,7 +180,7 @@ main() {
             exit 0
             ;;
         --version|-v)
-            print "currect essl version: v3.0.1"
+            print "currect essl version: v3.0.2"
             exit 0
             ;;esac
 
