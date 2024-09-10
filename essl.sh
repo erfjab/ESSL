@@ -1,358 +1,235 @@
 #!/bin/bash
 
-print() {
-    echo -e "\e[94m"$1"\e[0m"
+# Function definitions for colored output
+colors=( "\033[1;31m" "\033[1;35m" "\033[1;92m" "\033[38;5;46m" "\033[1;38;5;208m" "\033[1;36m" "\033[0m" )
+red=${colors[0]} pink=${colors[1]} green=${colors[2]} spring=${colors[3]} orange=${colors[4]} cyan=${colors[5]} reset=${colors[6]}
+print() { echo -e "${cyan}$1${reset}"; }
+error() { echo -e "${red}✗ $1${reset}"; }
+success() { echo -e "${spring}✓ $1${reset}"; }
+log() { echo -e "${green}! $1${reset}"; }
+warn() { echo -e "${orange} $1${reset}"; }
+
+# Trap for script interruption
+trap 'echo -e "\n${red}Script interrupted!${reset}"; exit 1' SIGINT
+
+# Validate domain format
+validate_domain() {
+    if [[ ! "$1" =~ ^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        error "Invalid domain format: $1"
+        return 1
+    fi
+    return 0
 }
 
-error() {
-    echo -e "\e[1;91m[error] "$1"\e[0m"
-}
-
-success() {
-    echo -e "\e[1;94m[success] "$1"\e[0m"
-}
-
-input() {
-    read -p "$(echo -e '\e[33m'"$1"'\e[0m')" "$2"
-}
-
-update_packages() {
-    if command -v apt &>/dev/null; then
-        apt update && apt install -y socat
-    elif command -v yum &>/dev/null; then
-        yum -y update && yum -y install socat
-    elif command -v dnf &>/dev/null; then
-        dnf -y update && dnf -y install socat
-    elif command -v pacman &>/dev/null; then
-        pacman -Sy --noconfirm socat
+# Function to install necessary dependencies
+install_dependencies() {
+    local pkg_manager
+    if command -v apt-get &> /dev/null; then
+        pkg_manager="apt-get"
+    elif command -v dnf &> /dev/null; then
+        pkg_manager="dnf"
+    elif command -v yum &> /dev/null; then
+        pkg_manager="yum"
     else
-        error "Unsupported operating system."
+        error "No supported package manager found. Please install packages manually."
         exit 1
     fi
-}
 
-install_certbot() {
-    if ! command -v certbot &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt install -y certbot
-        elif command -v yum &>/dev/null; then
-            yum -y install certbot
-        elif command -v dnf &>/dev/null; then
-            dnf -y install certbot
-        elif command -v pacman &>/dev/null; then
-            pacman -Sy --noconfirm certbot
-        else
-            error "Certbot installation failed. Unsupported operating system."
-            exit 1
-        fi
-    fi
-}
+    log "Updating package lists..."
+    $pkg_manager update -y || warn "Failed to update package lists."
 
-install_acme() {
-    if ! command -v ~/.acme.sh/acme.sh &>/dev/null; then
-        curl https://get.acme.sh | sh || { error "Error installing acme.sh, check logs..."; exit 1; }
-        ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-    fi
-}
-
-validate_domain() {
-    while true; do
-        input "Please enter your domain: " 'domain'
-        if [[ "$domain" =~ .*\..* && ${#domain} -ge 3 ]]; then
-            return 0
-        else
-            error "Invalid domain format. Please enter a valid domain name."
+    local packages=("curl" "socat" "certbot")
+    for pkg in "${packages[@]}"; do
+        if ! command -v "$pkg" &> /dev/null; then
+            log "Installing $pkg..."
+            $pkg_manager install -y "$pkg" || error "Failed to install $pkg"
         fi
     done
-}
 
-validate_email() {
-    while true; do
-        input "Please enter your email: " 'email'
-        if [[ "$email" =~ .*@.*\..* && ${#email} -gt 5 ]]; then
-            return 0
-        else
-            error "Invalid email format. Please enter a valid email address."
-        fi
-    done
-}
-
-validate_apikey() {
-    while true; do
-        input "Please enter your Global API key: " "api_key"
-        if [[ -n "$api_key" ]]; then
-            break
-        else
-            error "API key cannot be empty. Please enter a valid API key."
-        fi
-    done
-}
-
-set_directory() {
-    address="$1"
-    if [ -d "$address" ]; then
-        rm -rf "$address" || { error "Error removing existing directory"; exit 1; }
+    if ! command -v acme.sh &> /dev/null; then
+        log "Installing acme.sh..."
+        curl https://get.acme.sh | sh -s email="$email" || error "Failed to install acme.sh"
+        source ~/.bashrc
     fi
-    mkdir -p "$address" || { error "Error creating directory"; exit 1; }
+
+    success "Dependencies are installed."
 }
 
-move_ssl_files_combined() {
-    local domain="$1"
-    local type="$2"
-    local dest_dir=""
-    
-    while true; do
-        print "\n\n\nMoved to?\n"
-        print "1. Custom directory"
-        print "2. Marzban panel directory "
-        print "3. 3x-ui/x-ui/s-ui/hiddify panel directory"
-        input "\nEnter your choice (1, 2, 3): " "choice"
-        case $choice in
-            1)
-                while true; do
-                    input "\nEnter the destination directory path: " "dest_dir"
-                    if [ -z "$dest_dir" ]; then 
-                        error "Destination directory cannot be empty."
-                    elif [[ ! "$dest_dir" == /* ]]; then
-                        error "Destination directory must start with '/'."
-                    elif [[ "$dest_dir" == */ || "$dest_dir" == *//* ]]; then
-                        error "Invalid destination directory format. Please avoid trailing '/' and consecutive '/'."
-                    else
-                        address="$dest_dir/$domain"
-                        set_directory "$address"
-                        break
-                    fi
-                done
-                ;;
-            2)
-                dest_dir="/var/lib/marzban/certs/$domain"
-                set_directory "$dest_dir"
-                ;;
-            3)
-                dest_dir="/certs/$domain"
-                set_directory "$dest_dir"
-                ;;
-            *)
-                error "Invalid choice. Please enter 1, 2, or 3."
-                continue
-                ;;
-        esac
-
-        if [ ! -d "$dest_dir" ] || [ ! -w "$dest_dir" ]; then
-            error "Directory '$dest_dir' either does not exist or is not writable."
-            continue
-        fi
-
-        if [ "$type" == "acme" ]; then
-            if [ ! -f ~/.acme.sh/"${domain}_ecc"/fullchain.cer ] || [ ! -f ~/.acme.sh/"${domain}_ecc"/"${domain}".key ]; then
-                error "Certificate files not found in the '~/.acme.sh/${domain}_ecc/' directory."
-                break
-            fi
-        elif [ "$type" == "certbot" ]; then
-            if [ ! -f /etc/letsencrypt/live/"$domain"/fullchain.pem ] || [ ! -f /etc/letsencrypt/live/"$domain"/privkey.pem ]; then
-                error "Certificate files not found in the '/etc/letsencrypt/live/$domain/' directory."
-                break
-            fi
-        fi
-
-        if [ "$type" == "acme" ]; then
-            sudo cp "$HOME/.acme.sh/${domain}_ecc/fullchain.cer" "$dest_dir/fullchain.cer" || { error "Error copying certificate files"; return 1; }
-            sudo cp "$HOME/.acme.sh/${domain}_ecc/${domain}.key" "$dest_dir/privkey.key" || { error "Error copying certificate files"; return 1; }
-        elif [ "$type" == "certbot" ]; then
-            sudo cp "/etc/letsencrypt/live/$domain/fullchain.pem" "$dest_dir/fullchain.pem" || { error "Error copying certificate files"; return 1; }
-            sudo cp "/etc/letsencrypt/live/$domain/privkey.pem" "$dest_dir/privkey.pem" || { error "Error copying certificate files"; return 1; }
-        fi
-        success "SSL certificate files for domain '$domain' successfully moved.\n\n\t⭐ SSL location: $dest_dir\n\n\tfullchain: $dest_dir/fullchain.cer\n\tkey file : $dest_dir/privkey.key\n\n"
-        break
-    done
-}
-
-get_single_ssl() {
-    local domain="$1"
-    local email="$2"
-    if sudo ~/.acme.sh/acme.sh --issue --force --standalone -d "$domain"; then
-        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
-        move_ssl_files_combined "$domain" "acme"
-    elif sudo certbot certonly --standalone -d "$domain"; then
-        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained."
-        move_ssl_files_combined "$domain" "certbot"
-    else
-        error "Failed to obtain SSL certificate for domain '$domain'. Please check your DNS configuration and try again.\n"
-    fi
-}
-
-get_multi_domain_ssl() {
-    local domains="$1"
-    local email="$2"
+# Function to obtain and install SSL certificate using acme.sh for multiple domains
+get_install_certificate_acme() {
+    local domains=("$@")
     local domain_args=""
+    local main_domain="${domains[0]}"
 
-    for domain in $domains; do
+    for domain in "${domains[@]}"; do
+        domain=$(echo "$domain" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
         domain_args+=" -d $domain"
     done
 
-    if sudo certbot certonly --standalone $domain_args --email $email --non-interactive; then
-        success "\n\n\t⭐ SSL certificate for domains '$domains' successfully obtained."
-        for domain in $domains; do
-            move_ssl_files_combined "$domain" "certbot"
-            break
-        done
-    elif sudo ~/.acme.sh/acme.sh --issue --force --standalone $domain_args; then
-        success "\n\n\t⭐ SSL certificate for domains '$domains' successfully obtained."
-        for domain in $domains; do
-            move_ssl_files_combined "$domain" "acme"
-            break
-        done
+    ~/.acme.sh/acme.sh --issue --standalone $domain_args --accountemail "$email" || return 1
+
+    local cert_dir="$destination"
+    mkdir -p "$cert_dir" || error "Failed to create certificate directory"
+
+    ~/.acme.sh/acme.sh --install-cert -d "$main_domain" \
+        --key-file "$cert_dir/privkey.pem" \
+        --fullchain-file "$cert_dir/fullchain.pem" || return 1
+
+    success "SSL certificate obtained and installed using acme.sh for domains: ${domains[*]}"
+    return 0
+}
+
+# Function to obtain and install SSL certificate using certbot for multiple domains
+get_install_certificate_certbot() {
+    local domains=("$@")
+    local domain_args=""
+
+    for domain in "${domains[@]}"; do
+        domain=$(echo "$domain" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+        domain_args+=" -d $domain"
+    done
+
+    certbot certonly --standalone $domain_args --non-interactive --agree-tos --email "$email" || return 1
+
+    local main_domain="${domains[0]}"
+    local cert_dir="$destination"
+    mkdir -p "$cert_dir" || error "Failed to create certificate directory"
+
+    cp /etc/letsencrypt/live/$main_domain/privkey.pem "$cert_dir/privkey.pem"
+    cp /etc/letsencrypt/live/$main_domain/fullchain.pem "$cert_dir/fullchain.pem"
+
+    success "SSL certificate obtained and installed using certbot for domains: ${domains[*]}"
+    return 0
+}
+
+# Function to install the ESSL script
+install_script() {
+    log "Installing ESSL script..."
+    local install_dir="/usr/local/bin"
+    local script_path="$install_dir/essl"
+
+    curl -s -o "$script_path" https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh
+    chmod +x "$script_path"
+    success "ESSL script installed successfully."
+}
+
+# Function to upgrade the ESSL script
+upgrade_script() {
+    log "Upgrading ESSL script..."
+    local install_dir="/usr/local/bin"
+    local script_path="$install_dir/essl"
+
+    if [ -f "$script_path" ]; then
+        curl -s -o "$script_path" https://raw.githubusercontent.com/erfjab/ESSL/master/essl.sh
+        chmod +x "$script_path"
+        success "ESSL script upgraded successfully."
     else
-        error "\n\tFailed to obtain SSL certificate for domains '$domains'.\n"
+        error "ESSL script not found. Use '--install' to install it first."
     fi
 }
 
-get_wildcard_ssl() {
-    local domain="$1"
-    local email="$2"
-    if sudo certbot certonly --manual --preferred-challenges=dns -d "*.$domain" --agree-tos --email "$email";then
-        success "\n\n\t⭐ SSL certificate for domain '*.$domain' successfully obtained."
-        move_ssl_files_combined "*.$domain" "certbot"
-        return 0
-    else
-        error "Failed to obtain SSL certificate for domain '$domain'. Please check your DNS configuration and try again.\n"
-    fi
-}
-
-revoke_ssl() {
-    local domain="$1"
-    local ssl_path="/etc/letsencrypt/live/$domain/fullchain.pem"
-
-    if [ -f "$ssl_path" ]; then
-        if sudo certbot revoke --cert-path "$ssl_path"; then
-            success "SSL certificate for domain '$domain' revoked successfully."
-        else
-            error "Failed to revoke SSL certificate for domain '$domain'."
-        fi
-    elif sudo ~/.acme.sh/acme.sh --revoke -d "$domain"; then
-        success "SSL certificate for domain '$domain' revoked successfully."
-    else
-        error "No SSL certificate found for domain '$domain'."
-    fi
-}
-
-renew_ssl() {
-    local domain="$1"
-    local ssl_type=""
+# Function to display help message
+show_help() {
+    cat << EOF
     
-    if sudo certbot certificates --cert-name "$domain" | grep -q "Certificate Name: $domain"; then
-        ssl_type="certbot"
-    elif [ -f "~/.acme.sh/${domain}/${domain}.cer" ]; then
-        ssl_type="acme"
-    else
-        error "No SSL certificate found for domain '$domain'."
-        return 1
-    fi
-    
-    if [ "$ssl_type" == "certbot" ]; then
-        if sudo certbot renew --cert-name "$domain"; then
-            success "SSL certificate for domain '$domain' renewed successfully."
-        else
-            error "Failed to renew SSL certificate for domain '$domain' using Certbot. check logs..."
-        fi
-    elif [ "$ssl_type" == "acme" ]; then
-        if sudo ~/.acme.sh/acme.sh --renew -d "$domain"; then
-            success "SSL certificate for domain '$domain' renewed successfully."
-        else
-            error "Failed to renew SSL certificate for domain '$domain' using ACME.sh. check logs..."
-        fi
-    fi
+Usage: essl [email] [domain1 domain2 ...] <destination> | --install | --upgrade
+
+Email:
+  Provide an email address to use with acme.sh and certbot.
+
+Domains:
+  You can provide one or more domains.
+
+Destination:
+  Use 'marzban', 'x-ui', '3x-ui', 's-ui', or 'hiddify' for predefined paths,
+  or provide a custom path starting with '/'.
+
+Commands:
+  --install     Install the ESSL script.
+  --upgrade     Upgrade the ESSL script to the latest version.
+  --help        Show this help message.
+
+Examples:
+  essl user@example.com example.com /etc/ssl/certs
+  essl user@example.com domain1.com domain2.com domain3.com /custom/path
+  essl --install
+  essl --upgrade
+
+Note: This script must be run as root.
+
+EOF
 }
 
-get_cloudflare_ssl() {
-    local domain="$1"    
-    export CF_Key="$2"
-    export CF_Email="$3"
-    if sudo ~/.acme.sh/acme.sh --issue --dns dns_cf -d ${domain} -d *.${domain} --log; then
-        success "\n\n\t⭐ SSL certificate for domain '$domain' successfully obtained from Cloudflare."
-        move_ssl_files_combined "$domain" "acme"
-    else
-        error "\n\tFailed to obtain SSL certificate for domain '$domain' from Cloudflare."
-    fi
-}
+# Main function to handle the script logic
+main() {
+    [ "$EUID" -eq 0 ] || { error "This script must be run as root."; exit 1; }
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # Handle --install and --upgrade options
+    case "$1" in
+        --install)
+            install_script
+            exit 0
+            ;;
+        --upgrade)
+            upgrade_script
+            exit 0
+            ;;
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+    esac
 
-clear ; update_packages ; install_certbot ; install_acme ; clear
-
-print "\n\n\t Welcome to ESSL"
-print "\t\t v2.1.1 by @ErfJab\n\n"
-
-while true; do
-    print "-------------------------------------------------------"
-    print "1) New Single Domain ssl (sub.domain.com)"
-    print "2) New Wildcard ssl (*.domain.com)"
-    print "3) New Multi-Domain ssl (sub.domain1.com, sub2.domain2.com ...)"
-    print "4) Renewal ssl (update)" 
-    print "5) Revoke ssl (delete)"
-    print "0) Exit"
-    input '\nPlease Select your option: ' 'option'
-    clear
-
-    if [ "$option" == "1" ]; then
-        print "1) with acme & certbot (recommend)"
-        print "2) with cloudflare api"
-        input "\nplease enter your option number: " "select_option"
-        clear
-        if [[ "$select_option" =~ 1 ]]; then
-            validate_domain
-            validate_email
-            clear
-            get_single_ssl "$domain" "$email"
-        elif [[ "$select_option" =~ 2 ]]; then
-            validate_domain
-            validate_email "cloudflare"
-            validate_apikey
-            clear
-            get_cloudflare_ssl "$domain" "$email" "$api_key"
-        else
-            error "Invalid option."
-        fi        
-
-    elif [ "$option" == "2" ]; then
-        print "1) with acme & certbot"
-        print "2) with cloudflare api (recommend)"
-        input "\nplease enter your option number: " "select_option"
-        clear
-        if [[ "$select_option" =~ 1 ]]; then
-            validate_domain
-            validate_email
-            clear
-            get_wildcard_ssl "$domain" "$email"
-        elif [[ "$select_option" =~ 2 ]]; then
-            validate_domain
-            validate_email "cloudflare"
-            validate_apikey
-            clear
-            get_cloudflare_ssl "$domain" "$email" "$api_key"
-        else
-            error "Invalid option. Please enter 1 or 2."
-        fi   
-
-    elif [ "$option" == "3" ]; then
-        validate_domain
-        validate_email
-        clear
-        get_multi_domain_ssl "$domain" "$email"
-
-    elif [ "$option" == "4" ]; then
-        validate_domain
-        renew_ssl "$domain"
-
-    elif [ "$option" == "5" ]; then
-        validate_domain
-        revoke_ssl "$domain"
-    
-    elif [ "$option" == "0" ]; then
-        clear
+    # Check if user provided enough arguments for SSL installation
+    if [ $# -lt 3 ]; then
+        error "Not enough arguments provided. Use 'essl --help' for more details."
         exit 1
-
-    else
-        error "Invalid input. Please select a valid option.\n\n"
     fi
-done
+
+    # Get email and domain arguments
+    email="$1"
+    shift
+    local destination="${@: -1}"
+    local domains=("${@:1:$#-1}")
+
+    # Validate and handle the domains
+    for domain in "${domains[@]}"; do
+        validate_domain "$domain" || exit 1
+    done
+
+    # Set predefined paths if necessary
+    case "$destination" in
+        marzban) destination="/var/lib/marzban/certs" ;;
+        x-ui|3x-ui|s-ui|hiddify) destination="/certs" ;;
+        *) [[ "$destination" == /* ]] || { error "Invalid destination path. Must start with '/'"; exit 1; } ;;
+    esac
+    [[ "$destination" != */ ]] && destination="${destination}/"
+
+    # Install dependencies
+    install_dependencies
+
+    # Try acme.sh first
+    if get_install_certificate_acme "${domains[@]}"; then
+        log "Certificate successfully obtained using acme.sh"
+    else
+        warn "Failed to obtain certificate using acme.sh. Trying certbot..."
+        if get_install_certificate_certbot "${domains[@]}"; then
+            log "Certificate successfully obtained using certbot"
+        else
+            error "Failed to obtain certificate using both acme.sh and certbot"
+            exit 1
+        fi
+    fi
+
+    # Display final certificate path
+    success "Certificate files are located at:"
+    print "⭐ Private key: ${destination}privkey.pem"
+    print "⭐ Full chain: ${destination}fullchain.pem"
+}
+
+# If no arguments are provided, show help
+if [ $# -eq 0 ]; then
+    show_help
+else
+    main "$@"
+fi
