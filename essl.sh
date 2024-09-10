@@ -180,7 +180,7 @@ main() {
             exit 0
             ;;
         --version|-v)
-            print "v3.0.1"
+            print "currect essl version: v3.0.1"
             exit 0
             ;;esac
 
