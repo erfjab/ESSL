@@ -141,7 +141,7 @@ Domains:
   You can provide one or more domains.
 
 Destination:
-  Use 'marzban', 'x-ui', '3x-ui', 's-ui', or 'hiddify' for predefined paths,
+  Use 'marzban', 'marzneshin', 'x-ui', '3x-ui', 's-ui', or 'hiddify' for predefined paths,
   or provide a custom path starting with '/'.
 
 Commands:
@@ -203,14 +203,25 @@ main() {
 
     # Set predefined paths if necessary
     case "$destination" in
-        marzban) destination="/var/lib/marzban/certs" ;;
-        x-ui|3x-ui|s-ui|hiddify) destination="/certs" ;;
-        *) [[ "$destination" == /* ]] || { error "Invalid destination path. Must start with '/'"; exit 1; } ;;
+        marzban) base_destination="/var/lib/marzban/certs" ;;
+        marzneshin) base_destination="/var/lib/marzneshin/certs" ;;
+        x-ui|3x-ui|s-ui|hiddify) base_destination="/certs" ;;
+        *)
+            if [[ "$destination" != /* ]]; then
+                error "Invalid destination path. Must start with '/'"
+                exit 1
+            fi
+            base_destination="$destination"
+            ;;
     esac
     [[ "$destination" != */ ]] && destination="${destination}/"
 
     # Install dependencies
     install_dependencies
+
+    # Create subdirectory using the first domain
+    first_domain="${domains[0]}"
+    destination="${base_destination}/${first_domain}/"
 
     # Try acme.sh first
     if get_install_certificate_acme "${domains[@]}"; then
