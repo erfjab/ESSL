@@ -7,7 +7,7 @@ ESSL is a script to quickly obtain SSL certificates for your domains. It support
 - **Single Domain**: e.g., `sub.domain.com`
 - **Multiple Domains**: e.g., `sub1.domain1.com sub2.domain2.com`
 - **Auto Configuration**: Uses acme.sh or certbot
-- **Predefined Panel Paths**: Supports `marzban`, `x-ui`, `3x-ui`, `s-ui`, `hiddify`
+- **Predefined Panel Paths**: Supports `marzban`, `marzneshin`, `x-ui`, `3x-ui`, `s-ui`, `hiddify`
 - **Custom Paths**: Specify your own directory
 
 ### How to Use
