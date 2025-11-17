@@ -141,7 +141,7 @@ Domains:
   You can provide one or more domains.
 
 Destination:
-  Use 'marzban', 'marzneshin', 'x-ui', '3x-ui', 's-ui', or 'hiddify' for predefined paths,
+  Use 'marzban', 'marzneshin', 'x-ui', '3x-ui', 's-ui', 'ovpanel' or 'hiddify' for predefined paths,
   or provide a custom path starting with '/'.
 
 Commands:
@@ -205,6 +205,7 @@ main() {
     case "$destination" in
         marzban) base_destination="/var/lib/marzban/certs" ;;
         marzneshin) base_destination="/var/lib/marzneshin/certs" ;;
+        ovpanel) base_destination="/opt/ov-panel/data" ;;
         x-ui|3x-ui|s-ui|hiddify) base_destination="/certs" ;;
         *)
             if [[ "$destination" != /* ]]; then
