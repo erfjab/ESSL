@@ -141,7 +141,7 @@ Domains:
   You can provide one or more domains.
 
 Destination:
-  Use 'marzban', 'marzneshin', 'x-ui', '3x-ui', 's-ui', 'ovpanel' or 'hiddify' for predefined paths,
+  Use 'marzban', 'marzneshin', 'x-ui', '3x-ui', 'pasarguard', 's-ui', 'ovpanel' or 'hiddify' for predefined paths,
   or provide a custom path starting with '/'.
 
 Commands:
@@ -207,6 +207,7 @@ main() {
         marzneshin) base_destination="/var/lib/marzneshin/certs" ;;
         ovpanel) base_destination="/opt/ov-panel/data" ;;
         x-ui|3x-ui|s-ui|hiddify) base_destination="/certs" ;;
+        pasarguard) base_destination="/var/lib/pasarguard/certs" ;;
         *)
             if [[ "$destination" != /* ]]; then
                 error "Invalid destination path. Must start with '/'"
